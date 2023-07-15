@@ -1,6 +1,5 @@
 const scene = new THREE.Scene();
 
-
 let camera = {};
 if (innerWidth < 901) {
   camera = new THREE.PerspectiveCamera(90, innerWidth / innerHeight, 0.1, 1000);
@@ -22,30 +21,23 @@ Promise.all([
   fetch('./assets/shaders/vertex.glsl').then(response => response.text()),
   fetch('./assets/shaders/fragment.glsl').then(response => response.text()),
   fetch('./assets/shaders/atmosphereVertex.glsl').then(response => response.text()),
-  fetch('./assets/shaders/atmosphereFragment.glsl').then(response => response.text())
+  fetch('./assets/shaders/atmosphereFragment.glsl').then(response => response.text()),
+  new Promise((resolve, reject) => {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(
+      './assets/images/blue-globe-uv2.jpg',
+      (texture) => resolve(texture),
+      undefined,
+      (err) => reject(err)
+    );
+  })
 ])
-  .then(([vertexShaderSource, fragmentShaderSource, atmosphereVertexShaderSource, atmosphereFragmentShaderSource]) => {
+  .then(([vertexShaderSource, fragmentShaderSource, atmosphereVertexShaderSource, atmosphereFragmentShaderSource, globeTexture]) => {
     const globeShader = new THREE.ShaderMaterial({
       vertexShader: vertexShaderSource,
       fragmentShader: fragmentShaderSource,
       uniforms: {
-        globeTexture: {
-          value: new THREE.TextureLoader().load("./assets/images/blue-globe-uv2.jpg",
-            // On success
-            function (texture) {
-              console.log("Success!");
-              console.log(texture);
-            },
-
-            // Progress (ignored)
-            undefined,
-
-            // On error
-            function (err) {
-              console.log("Error");
-              console.log(err);
-            })
-        }
+        globeTexture: { value: globeTexture }
       }
     });
 
@@ -75,8 +67,8 @@ Promise.all([
     camera.position.z = 10;
 
     const mouse = {
-      x: undefined,
-      y: undefined
+      x: 0,
+      y: 0
     };
 
     function animate() {
@@ -92,9 +84,10 @@ Promise.all([
       }
     }
     const userAgent = navigator.userAgent.toLowerCase();
-    const isMobileDevice = /mobile|android|iphone|ipad|iemobile|wpdesktop|windows phone|blackberry/i.test(userAgent);
+    const isMobileDevice = /mobile|android|iphone|ipad|iemobile|wpdesktop|windows phone|blackberry/i.test(
+      userAgent
+    );
     animate();
-
 
     function handleMouseMove(event) {
       mouse.x = (event.clientX / innerWidth) * 2 - 1;
@@ -103,19 +96,20 @@ Promise.all([
 
     addEventListener("mousemove", handleMouseMove);
 
-    // Trigger the mousemove event on page load
-    const syntheticEvent = new MouseEvent("mousemove", {
-      clientX: window.innerWidth / 100,
-      clientY: window.innerHeight / 100
+
+    handleMouseMove({
+      clientX: innerWidth / 100,
+      clientY: innerHeight / 100
     });
-    handleMouseMove(syntheticEvent);
 
     if (isMobileDevice) {
       removeEventListener("mousemove", handleMouseMove);
     }
+
+    render();
   })
-  .catch(error => {
-    console.error('Error loading shaders', error);
+  .catch((error) => {
+    console.error("Error loading shaders or texture", error);
   });
 
 function render() {
@@ -138,10 +132,8 @@ function resize(renderer) {
   return needResize;
 }
 
-window.addEventListener('resize', function () {
+window.addEventListener("resize", function () {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
-
-render();
